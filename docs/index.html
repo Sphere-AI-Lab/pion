@@ -387,11 +387,9 @@
   /* Per-figure width caps to keep in-figure text at a consistent visual size.
      Each cap roughly tracks the figure's native PDF point width, so a figure
      that is e.g. half as wide in the paper renders ~half as wide here. */
-  .figure img.fw-983 { max-width: 980px; }   /* mup_adjusted_v2     983 pt */
-  .figure img.fw-760 { max-width: 760px; }   /* momentum_loss_curves 759 pt
-                                                norm_in_pretraining_v3 743 pt
-                                                different_approx_of_exp 752 pt */
-  .figure img.fw-660 { max-width: 660px; }   /* rl_v2               660 pt */
+  .figure img.fw-760 { max-width: 760px; }   /* momentum_loss_curves, norm_in_pretraining_v3,
+                                                mup_adjusted_v2 (shown smaller than native width) */
+  .figure img.fw-520 { max-width: 520px; }   /* rl_v2 — displayed smaller on project page */
   .figure img.fw-454 { max-width: 460px; }   /* pion_consistent     454 pt */
   .figure img.fw-368 { max-width: 380px; }   /* norm_and_rotations  368 pt */
   .figure img.fw-353 { max-width: 360px; }   /* jacobian / deepnet / pion_nonorm / o_layer1  ~350 pt */
@@ -1069,7 +1067,7 @@
     </p>
 
     <div class="figure">
-      <img class="fw-983" src="static/figures/mup_adjusted_v2.png" alt="mu-P learning-rate transfer across scales" />
+      <img class="fw-760" src="static/figures/mup_adjusted_v2.png" alt="mu-P learning-rate transfer across scales" />
       <div class="figure-caption">
         <span class="fig-label">Figure</span>
         <span class="mi">μP</span> learning-rate transfer for Pion across LLaMA and Qwen models of
@@ -1205,7 +1203,7 @@
     <p class="table-foot">Each benchmark is <strong>avg@K</strong> accuracy (%): AIME24 avg@32, AIME25 avg@32, AMC23 avg@8, Minerva Math avg@4, OlympiadBench avg@8. <strong>Avg</strong> = mean of the five. Table 3 in the paper.</p>
 
     <div class="figure">
-      <img class="fw-660" src="static/figures/rl_v2.png" alt="RLVR training dynamics" />
+      <img class="fw-520" src="static/figures/rl_v2.png" alt="RLVR training dynamics" />
       <div class="figure-caption">
         <span class="fig-label">Figure</span>
         Evaluation-accuracy training dynamics during RLVR with GRPO. Pion exhibits the fastest

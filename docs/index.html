@@ -452,8 +452,13 @@
     font-size: 0.78rem;
     border-bottom: 2px solid var(--ink);
   }
-  .results-table td:first-child,
-  .results-table th:first-child {
+  .results-table td:first-child {
+    text-align: left;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  /* Only the true “Method” column (first header row); avoid rowspan follow-up rows where :first-child is a metric th (e.g. AIME24). */
+  .results-table thead tr:first-child th:first-child {
     text-align: left;
     font-weight: 600;
     white-space: nowrap;
@@ -474,18 +479,32 @@
     line-height: 1.35;
   }
 
-  .results-table.sft-table {
+  /* SFT + RL: shared “split block” table look */
+  .results-table.results-split {
     font-size: 0.78rem;
-    border-collapse: collapse;
   }
-  .results-table.sft-table th,
-  .results-table.sft-table td {
+  .results-table.results-split th,
+  .results-table.results-split td {
     padding: 0.38rem 0.35rem;
+  }
+  .results-table.results-split .best {
+    font-weight: 700;
+    text-decoration: none;
+  }
+  .results-table.results-split tbody tr:last-child td {
+    background: var(--line-soft);
+  }
+  .results-table.results-split .subhead th {
+    font-size: 0.7rem;
+    font-weight: 600;
+  }
+
+  .results-table.sft-table {
+    border-collapse: collapse;
   }
   .results-table.sft-table thead tr:first-child th[rowspan] {
     vertical-align: middle;
     text-align: left;
-    border-right: 1px solid var(--line);
   }
   .results-table.sft-table thead tr:first-child th:not(:first-child) {
     text-align: center;
@@ -493,18 +512,6 @@
   .results-table.sft-table thead tr:nth-child(2) th,
   .results-table.sft-table thead tr:nth-child(3) th {
     text-align: center;
-  }
-  .results-table.sft-table thead tr:first-child th:nth-child(2),
-  .results-table.sft-table thead tr:nth-child(2) th:nth-child(2),
-  .results-table.sft-table thead tr:nth-child(3) th:nth-child(4) {
-    border-right: 1px solid var(--line);
-  }
-  .results-table.sft-table tbody td:first-child {
-    text-align: left;
-    border-right: 1px solid var(--line);
-  }
-  .results-table.sft-table tbody td:nth-child(5) {
-    border-right: 1px solid var(--line);
   }
   .results-table.sft-table thead tr:first-child th {
     border-bottom: 1px solid var(--line);
@@ -517,25 +524,13 @@
     font-weight: 600;
     border-bottom: 1px solid var(--ink);
   }
-  .results-table.sft-table .best {
-    font-weight: 700;
-    text-decoration: none;
-  }
-  .results-table.sft-table tbody tr:last-child td {
-    background: var(--line-soft);
-  }
 
-  /* RL (Table 3): light vertical rule between the two model blocks */
-  .results-table.results-rl thead tr:first-child th:nth-child(2) {
-    border-right: 1px solid var(--line);
-  }
-  .results-table.results-rl tbody td:nth-child(7) {
-    border-right: 1px solid var(--line);
-  }
+  /* RL (Table 3): first header row typography / separator (no vertical rules) */
   .results-table.results-rl thead tr:first-child th {
-    font-size: 0.72rem;
+    font-size: 0.78rem;
     line-height: 1.25;
     vertical-align: middle;
+    border-bottom: 1px solid var(--line);
   }
 
   p.table-foot {
@@ -657,6 +652,52 @@
     color: var(--ink) !important;
   }
 
+  /* Algorithm block (HTML + MathJax) */
+  .algorithm-block {
+    background: var(--bg-card);
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--accent);
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    padding: 1rem 1.25rem 1.15rem;
+    margin: 1.25rem 0;
+    overflow-x: auto;
+    text-align: left;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.82rem;
+    line-height: 1.58;
+    color: var(--ink);
+  }
+  .algorithm-block .alg-caption {
+    font-weight: 700;
+    font-size: 0.98rem;
+    margin-bottom: 0.65rem;
+    padding-bottom: 0.4rem;
+    border-bottom: 1px solid var(--line);
+    font-family: 'Source Serif 4', Georgia, serif;
+  }
+  .algorithm-block .alg-io {
+    margin: 0.4rem 0;
+  }
+  .algorithm-block .alg-io .kw {
+    display: inline-block;
+    font-weight: 700;
+    font-size: 0.7rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent-ink);
+    min-width: 3.2rem;
+    margin-right: 0.25rem;
+  }
+  .algorithm-block .alg-line {
+    margin: 0.32rem 0;
+  }
+  .algorithm-block .alg-line.in1 { padding-left: 1rem; }
+  .algorithm-block .alg-line.in2 { padding-left: 2rem; }
+  .algorithm-block .alg-for-head {
+    font-weight: 600;
+    margin: 0.55rem 0 0.2rem;
+  }
+
   /* Mobile */
   @media (max-width: 640px) {
     .hero { padding: 56px 0 24px; }
@@ -670,9 +711,8 @@
     pre.bibtex { font-size: 12px; padding: 14px 16px; }
     .results-table { font-size: 0.68rem; }
     .results-table th, .results-table td { padding: 0.35rem 0.2rem; }
-    .results-table.sft-table { font-size: 0.68rem; }
-    .results-table.sft-table th,
-    .results-table.sft-table td { padding: 0.3rem 0.18rem; }
+    .results-table.results-split th,
+    .results-table.results-split td { padding: 0.3rem 0.18rem; }
   }
 </style>
 </head>
@@ -889,6 +929,44 @@
       motion rather than rescaling.
     </p>
 
+    <h4 class="subsection">Full algorithm</h4>
+
+    <div class="algorithm-block">
+      <div class="alg-caption">Algorithm: The Pion Optimizer</div>
+      <div class="alg-io"><span class="kw">Input</span>
+        Learning rate \(\eta\), momentum \(\beta_1,\beta_2\), RMS constant \(c\), stability \(\epsilon\), alternating flag,
+        initial \(\mathbf{W}_0 \in \mathbb{R}^{d_{\mathrm{out}}\times d_{\mathrm{in}}}\).
+      </div>
+      <div class="alg-io"><span class="kw">Output</span> Optimized parameter \(\mathbf{W}_t\).</div>
+      <div class="alg-line">Initialize \(\mathbf{m}^{\mathrm{in}}_0,\mathbf{v}^{\mathrm{in}}_0 \leftarrow \mathbf{0}\in\mathbb{R}^{d_{\mathrm{in}}\times d_{\mathrm{in}}}\),
+        \(\mathbf{m}^{\mathrm{out}}_0,\mathbf{v}^{\mathrm{out}}_0 \leftarrow \mathbf{0}\in\mathbb{R}^{d_{\mathrm{out}}\times d_{\mathrm{out}}}\).</div>
+      <div class="alg-line">Define \(\mathcal{E}_2(\mathbf{A},\alpha) \leftarrow \mathbf{I}+\eta\alpha \mathbf{A}+\tfrac{1}{2}(\eta\alpha \mathbf{A})^2\).</div>
+      <div class="alg-for-head"><strong>for</strong> \(t=1,2,\ldots\) <strong>do</strong></div>
+      <div class="alg-line in1">\(\mathbf{G}_t \leftarrow \nabla_{\mathbf{W}} f(\mathbf{W}_{t-1})\).</div>
+      <div class="alg-line in1">\(\mathbf{G}^{\mathrm{in}}_t \leftarrow \mathbf{W}_{t-1}^{\top}\mathbf{G}_t - \mathbf{G}_t^{\top}\mathbf{W}_{t-1}\), &nbsp;
+        \(\mathbf{G}^{\mathrm{out}}_t \leftarrow \mathbf{G}_t\mathbf{W}_{t-1}^{\top} - \mathbf{W}_{t-1}\mathbf{G}_t^{\top}\).</div>
+      <div class="alg-line in1">\(\mathbf{m}^{\mathrm{in}}_t \leftarrow \beta_1 \mathbf{m}^{\mathrm{in}}_{t-1} + (1-\beta_1)\mathbf{G}^{\mathrm{in}}_t\), &nbsp;
+        \(\mathbf{m}^{\mathrm{out}}_t \leftarrow \beta_1 \mathbf{m}^{\mathrm{out}}_{t-1} + (1-\beta_1)\mathbf{G}^{\mathrm{out}}_t\).</div>
+      <div class="alg-line in1">\(\mathbf{v}^{\mathrm{in}}_t \leftarrow \beta_2 \mathbf{v}^{\mathrm{in}}_{t-1} + (1-\beta_2)(\mathbf{G}^{\mathrm{in}}_t \odot \mathbf{G}^{\mathrm{in}}_t)\), &nbsp;
+        \(\mathbf{v}^{\mathrm{out}}_t \leftarrow \beta_2 \mathbf{v}^{\mathrm{out}}_{t-1} + (1-\beta_2)(\mathbf{G}^{\mathrm{out}}_t \odot \mathbf{G}^{\mathrm{out}}_t)\).</div>
+      <div class="alg-line in1">\(\mathbf{A}^{\mathrm{in}}_t \leftarrow -\,\mathbf{m}^{\mathrm{in}}_t / (\sqrt{\mathbf{v}^{\mathrm{in}}_t} + \epsilon)\), &nbsp;
+        \(\mathbf{A}^{\mathrm{out}}_t \leftarrow -\,\mathbf{m}^{\mathrm{out}}_t / (\sqrt{\mathbf{v}^{\mathrm{out}}_t} + \epsilon)\) <span class="table-foot" style="display:inline;margin:0;">(element-wise)</span>.</div>
+      <div class="alg-line in1"><strong>if</strong> alternating update <strong>then</strong></div>
+      <div class="alg-line in2"><strong>if</strong> \(t\) is even <strong>then</strong></div>
+      <div class="alg-line in2">\(\alpha_t \leftarrow \dfrac{c\sqrt{d_{\mathrm{out}}d_{\mathrm{in}}}}{ \|\mathbf{A}^{\mathrm{out}}_t \mathbf{W}_{t-1}\|_F+\epsilon}\).</div>
+      <div class="alg-line in2">\(\mathbf{W}_t \leftarrow \mathcal{E}_2(\mathbf{A}^{\mathrm{out}}_t,\alpha_t)\,\mathbf{W}_{t-1}\).</div>
+      <div class="alg-line in2"><strong>else</strong></div>
+      <div class="alg-line in2">\(\alpha_t \leftarrow \dfrac{c\sqrt{d_{\mathrm{out}}d_{\mathrm{in}}}}{ \|\mathbf{W}_{t-1}\mathbf{A}^{\mathrm{in}}_t\|_F+\epsilon}\).</div>
+      <div class="alg-line in2">\(\mathbf{W}_t \leftarrow \mathbf{W}_{t-1}\,\mathcal{E}_2(\mathbf{A}^{\mathrm{in}}_t,\alpha_t)\).</div>
+      <div class="alg-line in2"><strong>end if</strong></div>
+      <div class="alg-line in1"><strong>else</strong> <span class="table-foot" style="display:inline;margin:0;">(bilateral)</span></div>
+      <div class="alg-line in2">\(\alpha_t \leftarrow \dfrac{c\sqrt{d_{\mathrm{out}}d_{\mathrm{in}}}}{ \|\mathbf{A}^{\mathrm{out}}_t\mathbf{W}_{t-1}+\mathbf{W}_{t-1}\mathbf{A}^{\mathrm{in}}_t\|_F+\epsilon}\).</div>
+      <div class="alg-line in2">\(\mathbf{W}_t \leftarrow \mathcal{E}_2(\mathbf{A}^{\mathrm{out}}_t,\alpha_t)\,\mathbf{W}_{t-1}\,\mathcal{E}_2(\mathbf{A}^{\mathrm{in}}_t,\alpha_t)\).</div>
+      <div class="alg-line in1"><strong>end if</strong></div>
+      <div class="alg-for-head"><strong>end for</strong></div>
+      <div class="alg-line"><strong>return</strong> \(\mathbf{W}_t\).</div>
+    </div>
+
     <h4 class="subsection">Design principles for practical training</h4>
     <p>
       We turn the bare rule above into a usable optimizer by studying four design axes empirically:
@@ -967,7 +1045,7 @@
     </p>
 
     <div class="table-wrap">
-      <table class="results-table">
+      <table class="results-table results-split">
         <thead>
           <tr>
             <th>Method</th>
@@ -1088,7 +1166,7 @@
     </p>
 
     <div class="table-wrap">
-      <table class="results-table sft-table">
+      <table class="results-table results-split sft-table">
         <thead>
           <tr>
             <th rowspan="3">Method</th>
@@ -1156,7 +1234,7 @@
     </p>
 
     <div class="table-wrap">
-      <table class="results-table results-rl">
+      <table class="results-table results-split results-rl">
         <thead>
           <tr>
             <th rowspan="2">Method</th>

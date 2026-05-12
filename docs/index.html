@@ -867,11 +867,13 @@
       <div class="eq-label">Pion update rule</div>
       <div class="math-block">
         \[
+        \begin{gathered}
         \begin{aligned}
         \mathbf{G}_t^{\mathrm{in}} &amp;= \mathbf{W}_t^\top \mathbf{G}_t - (\mathbf{W}_t^\top \mathbf{G}_t)^\top, \qquad
-        \mathbf{G}_t^{\mathrm{out}} = \mathbf{G}_t \mathbf{W}_t^\top - (\mathbf{G}_t \mathbf{W}_t^\top)^\top, \\
-        \mathbf{W}_{t+1} &amp;= \exp(-\eta \mathbf{G}_t^{\mathrm{out}})\, \mathbf{W}_t\, \exp(-\eta \mathbf{G}_t^{\mathrm{in}}).
-        \end{aligned}
+        \mathbf{G}_t^{\mathrm{out}} = \mathbf{G}_t \mathbf{W}_t^\top - (\mathbf{G}_t \mathbf{W}_t^\top)^\top,
+        \end{aligned}\\[0.65em]
+        \mathbf{W}_{t+1} = \exp(-\eta \mathbf{G}_t^{\mathrm{out}})\, \mathbf{W}_t\, \exp(-\eta \mathbf{G}_t^{\mathrm{in}}).
+        \end{gathered}
         \]
       </div>
     </div>

@@ -1,773 +1,1265 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Pion: A spectrum-preserving optimizer for LLM training via orthogonal equivalence transformation.">
-  <meta name="keywords" content="Pion, POET, LLM optimizer, orthogonal equivalence, spectrum preserving, muP">
-  <title>Pion: Spectrum-Preserving LLM Optimizer</title>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Pion: A Spectrum-Preserving Optimizer via Orthogonal Equivalence Transformation</title>
+<meta name="description" content="Pion is a spectrum-preserving optimizer for large language model training that updates weights through coupled left and right orthogonal transformations, keeping singular values fixed throughout optimization." />
 
-  <link href="https://fonts.googleapis.com/css?family=Google+Sans:400,500,700|Noto+Sans:400,500|Castoro" rel="stylesheet">
-  <link rel="stylesheet" href="./static/css/bulma.min.css">
-  <link rel="stylesheet" href="./static/css/fontawesome.all.min.css">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/jpswalsh/academicons@1/css/academicons.min.css">
-  <script defer src="./static/js/fontawesome.all.min.js"></script>
+<!-- Social / OpenGraph -->
+<meta property="og:title" content="Pion: A Spectrum-Preserving Optimizer via Orthogonal Equivalence Transformation" />
+<meta property="og:description" content="A spectrum-preserving optimizer for stable LLM training, built on orthogonal equivalence transformations." />
+<meta property="og:type" content="article" />
 
-  <script>
-    window.MathJax = {
-      tex: {
-        inlineMath: [['\\(', '\\)'], ['$', '$']],
-        displayMath: [['\\[', '\\]'], ['$$', '$$']]
-      }
-    };
-  </script>
-  <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600;8..60,700&family=STIX+Two+Text:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,600;1,700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 
-  <style>
-    .content.has-text-justified,
-    .content.has-text-justified p { color: #000; }
-    body {
-      font-family: 'Google Sans', 'Noto Sans', sans-serif;
-      color: #000;
-      background: #fff;
+<script>
+  window.MathJax = {
+    tex: {
+      inlineMath: [['\\(', '\\)'], ['$', '$']],
+      displayMath: [['\\[', '\\]'], ['$$', '$$']]
     }
+  };
+</script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 
-    .hero-gradient {
-      background: #fff;
-      padding: 4rem 1.5rem 3.5rem;
-      margin-top: 0;
-      border-bottom: 1px solid #e0e0e0;
-    }
+<style>
+  :root {
+    --bg: #ffffff;
+    --bg-soft: #fafaf8;
+    --bg-card: #ffffff;
+    --ink: #1a1a1a;
+    --ink-soft: #4a4a4a;
+    --muted: #767676;
+    --line: #e6e4df;
+    --line-soft: #f0eee9;
+    --accent: #7a1d2a;        /* deep burgundy */
+    --accent-soft: #f4ecee;
+    --accent-ink: #5d141f;
+    --highlight: #fef7e6;
+    --code-bg: #f6f4ef;
+    --max: 1080px;
+    --max-narrow: 760px;
+    --radius: 10px;
+    --radius-sm: 6px;
+    --shadow: 0 1px 2px rgba(0,0,0,0.03), 0 4px 16px rgba(0,0,0,0.04);
+    --font-math: 'STIX Two Text', 'Source Serif 4', 'Noto Serif', Georgia, serif;
+  }
 
-    .publication-title {
-      font-size: 2.5rem !important;
-      font-weight: 700 !important;
-      color: #000 !important;
-      line-height: 1.2 !important;
-      letter-spacing: -0.01em;
-    }
-    .publication-title .accent { color: #000 !important; -webkit-text-fill-color: #000; }
-    .publication-subtitle {
-      color: #000 !important;
-      font-size: 1.25rem !important;
-      font-weight: 700 !important;
-      margin-top: 0.75rem !important;
-    }
-    .author-block {
-      font-size: 1.02rem;
-      color: #000;
-      margin: 0 0.12rem;
-    }
-    .affil-block {
-      color: #000;
-      font-size: 0.94rem;
-    }
+  * { box-sizing: border-box; }
 
-    .publication-links {
-      margin-top: 1.5rem;
-      display: flex;
-      gap: 0.75rem;
-      justify-content: center;
-      flex-wrap: wrap;
-    }
+  html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'Source Serif 4', 'Source Serif Pro', Georgia, 'Times New Roman', serif;
+    font-size: 18px;
+    line-height: 1.65;
+    font-feature-settings: "kern", "liga", "onum";
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
 
-    .external-link {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.45rem;
-      padding: 0.55rem 1.3rem;
-      border-radius: 6px;
-      font-weight: 600;
-      font-size: 0.9rem;
-      text-decoration: none;
-      border: 2px solid #000;
-      transition: opacity 0.2s ease;
-    }
-    .btn-primary {
-      background: #000;
-      color: #fff;
-    }
-    .btn-primary:hover { opacity: 0.85; color: #fff; }
-    .btn-outline {
-      background: #fff;
-      color: #000;
-    }
-    .btn-outline:hover { opacity: 0.85; }
-    /* Hero Paper: remove .paper-arxiv-pending and set href when arXiv is live */
-    .paper-arxiv-pending {
-      pointer-events: none;
-      cursor: default;
-      opacity: 0.72;
-    }
-    .paper-arxiv-pending:hover { opacity: 0.72; color: #fff; }
+  a { color: var(--accent); text-decoration: none; transition: color 0.15s ease; }
+  a:hover { color: var(--accent-ink); text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; }
 
-    .content-section {
-      background: #fff;
-      margin: 0;
-      padding: 4rem 1.5rem;
-      border-bottom: 1px solid #e0e0e0;
-    }
-    .content-section:nth-child(even) { background: #fff; }
+  .container {
+    max-width: var(--max);
+    margin: 0 auto;
+    padding: 0 28px;
+  }
+  .container-narrow {
+    max-width: var(--max-narrow);
+    margin: 0 auto;
+    padding: 0 28px;
+  }
 
-    .section-title {
-      font-size: 1.75rem !important;
-      font-weight: 700 !important;
-      color: #000 !important;
-      margin-bottom: 1.5rem !important;
-      position: relative;
-    }
-    .section-title::after {
-      content: '';
-      display: block;
-      width: 3rem;
-      height: 2px;
-      background: #000;
-      margin: 0.5rem auto 0;
-    }
+  /* ============ Hero ============ */
+  .hero {
+    padding: 80px 0 32px;
+    text-align: center;
+    border-bottom: 1px solid var(--line);
+    background:
+      radial-gradient(ellipse 80% 60% at 50% 0%, rgba(122, 29, 42, 0.04) 0%, transparent 70%),
+      var(--bg);
+  }
 
-    .section-divider {
-      background: #ececec;
-      padding: 2.5rem 1.5rem;
-      text-align: center;
-      border-top: 1px solid #d8d8d8;
-      border-bottom: 1px solid #d8d8d8;
-    }
-    .section-divider h2 {
-      color: #000 !important;
-      font-size: 1.85rem !important;
-      font-weight: 700 !important;
-    }
-    .content-section .title,
-    .content-section h2.title {
-      font-weight: 700 !important;
-    }
-    .section-divider .divider-subtitle {
-      color: #000;
-      font-size: 0.95rem;
-      margin-top: 0.4rem;
-    }
-    .divider-pill {
-      display: inline-block;
-      padding: 0.2rem 0.85rem;
-      border: 1px solid #000;
-      border-radius: 4px;
-      color: #000;
-      font-size: 0.75rem;
-      font-weight: 700;
-      letter-spacing: 0.06em;
-      text-transform: uppercase;
-      margin-bottom: 0.6rem;
-    }
+  .eyebrow {
+    display: inline-block;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent);
+    padding: 6px 12px;
+    background: var(--accent-soft);
+    border-radius: 999px;
+    margin-bottom: 24px;
+  }
 
-    .figure-panel {
-      background: #fff;
-      border: 1px solid #ddd;
-      border-radius: 8px;
-      padding: 0.75rem;
-      margin: 1.25rem auto;
-      max-width: 920px;
-    }
-    .figure-img {
-      display: block;
-      width: 100%;
-      max-width: 100%;
-      height: auto;
-      border-radius: 4px;
-      margin: 0 auto;
-    }
-    .figure-caption {
-      text-align: center;
-      color: #000;
-      font-size: 0.88rem;
-      margin: 0.75rem 0.25rem 0.35rem;
-      line-height: 1.5;
-    }
+  h1.title {
+    font-family: 'Source Serif 4', serif;
+    font-size: clamp(28px, 4.6vw, 44px);
+    line-height: 1.18;
+    font-weight: 600;
+    letter-spacing: -0.015em;
+    margin: 0 auto 8px;
+    max-width: 880px;
+    color: var(--ink);
+  }
+  .title .pion-name {
+    color: var(--accent);
+    font-style: italic;
+    font-weight: 600;
+  }
 
-    .two-col-figures {
-      display: flex;
-      gap: 1rem;
-      justify-content: center;
-      flex-wrap: wrap;
-      align-items: flex-start;
-      max-width: 960px;
-      margin: 1rem auto;
-    }
-    .two-col-figures .figure-panel {
-      flex: 1 1 calc(50% - 0.5rem);
-      min-width: 280px;
-      max-width: calc(50% - 0.5rem);
-      margin: 0;
-    }
+  .subtitle {
+    font-family: 'Source Serif 4', serif;
+    font-size: clamp(17px, 2.1vw, 21px);
+    color: var(--ink-soft);
+    margin: 12px auto 0;
+    max-width: 720px;
+    font-weight: 400;
+    line-height: 1.45;
+  }
 
-    .math-block {
-      background: #fff;
-      border: 1px solid #ddd;
-      border-left: 3px solid #000;
-      border-radius: 0 6px 6px 0;
-      padding: 1rem 1.25rem;
-      margin: 1.25rem 0;
-      overflow-x: auto;
-    }
+  .authors {
+    margin: 32px auto 4px;
+    max-width: 800px;
+    color: var(--ink);
+    font-size: 17px;
+    line-height: 1.8;
+  }
+  .authors .author {
+    display: inline-block;
+    margin: 0 2px;
+  }
+  .authors .author-sep {
+    display: inline-block;
+    margin: 0 2px 0 0;
+    color: var(--ink);
+  }
+  .authors sup {
+    font-size: 0.68em;
+    line-height: 0;
+    vertical-align: 0.35em;
+    font-weight: 500;
+  }
+  .affiliations sup {
+    font-size: 0.75em;
+    margin-right: 0.12em;
+  }
+  .affil-sep {
+    margin: 0 0.35em;
+    color: var(--muted);
+  }
+  .affiliations {
+    margin: 6px auto 0;
+    color: var(--muted);
+    font-size: 15px;
+    font-family: 'Inter', sans-serif;
+  }
+  .submission-note {
+    margin-top: 12px;
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    color: var(--muted);
+    letter-spacing: 0.02em;
+  }
 
-    .results-table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 0.82rem;
-      margin: 1.25rem 0;
-      border: 1px solid #ccc;
-    }
-    .results-table th, .results-table td {
-      padding: 0.5rem 0.45rem;
-      text-align: center;
-      border-bottom: 1px solid #ddd;
-      vertical-align: middle;
-      color: #000;
-    }
-    .results-table th {
-      background: #fff;
-      font-weight: 700;
-      font-size: 0.78rem;
-      border-bottom: 2px solid #000;
-    }
-    .results-table td:first-child,
-    .results-table th:first-child {
-      text-align: left;
-      font-weight: 600;
-      white-space: nowrap;
-    }
-    .results-table tr:nth-child(even) { background: #fff; }
-    .results-table tr:hover { background: #fafafa; }
-    .results-table .best { font-weight: 700; text-decoration: underline; }
-    .results-table .subhead th {
-      background: #fff;
-      color: #000;
-      font-size: 0.72rem;
-      font-weight: 600;
-      border-bottom: 1px solid #000;
-    }
+  /* Buttons */
+  .buttons {
+    margin: 36px 0 12px;
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 18px;
+    border-radius: 999px;
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    background: var(--ink);
+    color: #fff;
+    border: 1px solid var(--ink);
+    transition: all 0.15s ease;
+    text-decoration: none;
+  }
+  .btn:hover {
+    background: #000;
+    border-color: #000;
+    color: #fff;
+    text-decoration: none;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+  }
+  .btn.secondary {
+    background: #fff;
+    color: var(--ink);
+    border-color: var(--line);
+  }
+  .btn.secondary:hover {
+    background: var(--bg-soft);
+    color: var(--ink);
+    border-color: var(--ink-soft);
+  }
+  .btn svg { width: 15px; height: 15px; }
 
-    /* SFT Table 2: 3-row header like paper (l|cccc|cccc); fix first-col vs numeric alignment */
-    .results-table.sft-table {
-      font-size: 0.78rem;
-      border-collapse: collapse;
-    }
+  /* ============ Teaser ============ */
+  .teaser {
+    padding: 56px 0 24px;
+    background: var(--bg);
+  }
+  .teaser-figure {
+    background: var(--bg-card);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 36px 28px 28px;
+    box-shadow: var(--shadow);
+  }
+  .teaser-figure img,
+  .teaser-figure object {
+    display: block;
+    width: 100%;
+    max-width: 720px;
+    margin: 0 auto;
+    height: auto;
+  }
+  .teaser-caption {
+    font-size: 14.5px;
+    line-height: 1.55;
+    color: var(--ink-soft);
+    margin: 22px auto 0;
+    text-align: center;
+    max-width: 760px;
+    font-family: 'Inter', sans-serif;
+  }
+  .teaser-caption strong { color: var(--ink); font-weight: 600; }
+
+  /* ============ Sections ============ */
+  section {
+    padding: 56px 0;
+  }
+  section + section { border-top: 1px solid var(--line-soft); }
+
+  h2.section-title {
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 12px;
+  }
+  h3.section-h {
+    font-family: 'Source Serif 4', serif;
+    font-size: 30px;
+    font-weight: 600;
+    letter-spacing: -0.012em;
+    margin: 0 0 28px;
+    color: var(--ink);
+    line-height: 1.25;
+  }
+  h4.subsection {
+    font-family: 'Source Serif 4', serif;
+    font-size: 22px;
+    font-weight: 600;
+    margin: 40px 0 14px;
+    color: var(--ink);
+    letter-spacing: -0.005em;
+  }
+  h4.subsection:first-child { margin-top: 0; }
+
+  p { margin: 0 0 16px; }
+  p:last-child { margin-bottom: 0; }
+
+  /* TL;DR pillar */
+  .tldr {
+    background: var(--bg-soft);
+    border-left: 3px solid var(--accent);
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    padding: 22px 26px;
+    margin: 0 0 28px;
+    font-size: 17.5px;
+    line-height: 1.6;
+  }
+  .tldr-label {
+    font-family: 'Inter', sans-serif;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--accent);
+    display: block;
+    margin-bottom: 6px;
+  }
+
+  /* Equation block */
+  .equation-block {
+    background: var(--bg-soft);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 28px 24px;
+    margin: 28px 0;
+    overflow-x: auto;
+  }
+  .equation-block .eq-label {
+    font-family: 'Inter', sans-serif;
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 12px;
+  }
+
+  /* Highlight cards */
+  .highlights {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 18px;
+    margin: 8px 0 0;
+  }
+  .highlight-card {
+    background: var(--bg-card);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 22px 22px 20px;
+    transition: all 0.2s ease;
+  }
+  .highlight-card:hover {
+    border-color: var(--accent);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 18px rgba(122, 29, 42, 0.06);
+  }
+  .highlight-card .icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 9px;
+    background: var(--accent-soft);
+    color: var(--accent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 14px;
+  }
+  .highlight-card h5 {
+    font-family: 'Source Serif 4', serif;
+    font-size: 18px;
+    margin: 0 0 8px;
+    font-weight: 600;
+    color: var(--ink);
+  }
+  .highlight-card p {
+    font-size: 15px;
+    line-height: 1.55;
+    color: var(--ink-soft);
+    margin: 0;
+    font-family: 'Inter', sans-serif;
+  }
+
+  /* Figures */
+  .figure {
+    margin: 36px 0 8px;
+    background: var(--bg-card);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 24px 22px 18px;
+    text-align: center;
+  }
+  .figure img {
+    display: block;
+    width: 100%;
+    height: auto;
+    margin: 0 auto;
+    border-radius: var(--radius-sm);
+  }
+  /* Per-figure width caps to keep in-figure text at a consistent visual size.
+     Each cap roughly tracks the figure's native PDF point width, so a figure
+     that is e.g. half as wide in the paper renders ~half as wide here. */
+  .figure img.fw-983 { max-width: 980px; }   /* mup_adjusted_v2     983 pt */
+  .figure img.fw-760 { max-width: 760px; }   /* momentum_loss_curves 759 pt
+                                                norm_in_pretraining_v3 743 pt
+                                                different_approx_of_exp 752 pt */
+  .figure img.fw-660 { max-width: 660px; }   /* rl_v2               660 pt */
+  .figure img.fw-454 { max-width: 460px; }   /* pion_consistent     454 pt */
+  .figure img.fw-368 { max-width: 380px; }   /* norm_and_rotations  368 pt */
+  .figure img.fw-353 { max-width: 360px; }   /* jacobian / deepnet / pion_nonorm / o_layer1  ~350 pt */
+  .figure img.fw-245 { max-width: 260px; }   /* alternate_update    245 pt */
+  .figure-caption {
+    font-size: 14px;
+    color: var(--ink-soft);
+    margin: 18px auto 0;
+    line-height: 1.55;
+    font-family: 'Inter', sans-serif;
+    max-width: 820px;
+  }
+  .figure-caption .fig-label {
+    color: var(--accent);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-size: 12px;
+    margin-right: 6px;
+  }
+
+  /* Two-column figure grid */
+  .fig-grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+    margin: 28px 0;
+  }
+  @media (max-width: 720px) {
+    .fig-grid-2 { grid-template-columns: 1fr; }
+  }
+
+  /* Results tables — aligned with docs/index.html (paper-style) */
+  .table-wrap {
+    margin: 1.25rem 0;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .results-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.82rem;
+    margin: 0;
+    border: 1px solid var(--line);
+    background: var(--bg-card);
+    color: var(--ink);
+  }
+  .results-table th,
+  .results-table td {
+    padding: 0.5rem 0.45rem;
+    text-align: center;
+    border-bottom: 1px solid var(--line-soft);
+    vertical-align: middle;
+    color: var(--ink);
+  }
+  .results-table th {
+    background: var(--bg-card);
+    font-weight: 700;
+    font-size: 0.78rem;
+    border-bottom: 2px solid var(--ink);
+  }
+  .results-table td:first-child,
+  .results-table th:first-child {
+    text-align: left;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .results-table tbody tr:nth-child(even) { background: var(--bg-card); }
+  .results-table tbody tr:hover { background: var(--bg-soft); }
+  .results-table .best {
+    font-weight: 700;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+  .results-table .subhead th {
+    background: var(--bg-card);
+    color: var(--ink);
+    font-size: 0.72rem;
+    font-weight: 600;
+    border-bottom: 1px solid var(--ink);
+    line-height: 1.35;
+  }
+
+  .results-table.sft-table {
+    font-size: 0.78rem;
+    border-collapse: collapse;
+  }
+  .results-table.sft-table th,
+  .results-table.sft-table td {
+    padding: 0.38rem 0.35rem;
+  }
+  .results-table.sft-table thead tr:first-child th[rowspan] {
+    vertical-align: middle;
+    text-align: left;
+    border-right: 1px solid var(--line);
+  }
+  .results-table.sft-table thead tr:first-child th:not(:first-child) {
+    text-align: center;
+  }
+  .results-table.sft-table thead tr:nth-child(2) th,
+  .results-table.sft-table thead tr:nth-child(3) th {
+    text-align: center;
+  }
+  .results-table.sft-table thead tr:first-child th:nth-child(2),
+  .results-table.sft-table thead tr:nth-child(2) th:nth-child(2),
+  .results-table.sft-table thead tr:nth-child(3) th:nth-child(4) {
+    border-right: 1px solid var(--line);
+  }
+  .results-table.sft-table tbody td:first-child {
+    text-align: left;
+    border-right: 1px solid var(--line);
+  }
+  .results-table.sft-table tbody td:nth-child(5) {
+    border-right: 1px solid var(--line);
+  }
+  .results-table.sft-table thead tr:first-child th {
+    border-bottom: 1px solid var(--line);
+  }
+  .results-table.sft-table thead tr:nth-child(2) th {
+    border-bottom: 1px solid var(--line);
+  }
+  .results-table.sft-table thead tr:nth-child(3) th {
+    font-size: 0.7rem;
+    font-weight: 600;
+    border-bottom: 1px solid var(--ink);
+  }
+  .results-table.sft-table .best {
+    font-weight: 700;
+    text-decoration: none;
+  }
+  .results-table.sft-table tbody tr:last-child td {
+    background: var(--line-soft);
+  }
+
+  /* RL (Table 3): light vertical rule between the two model blocks */
+  .results-table.results-rl thead tr:first-child th:nth-child(2) {
+    border-right: 1px solid var(--line);
+  }
+  .results-table.results-rl tbody td:nth-child(7) {
+    border-right: 1px solid var(--line);
+  }
+  .results-table.results-rl thead tr:first-child th {
+    font-size: 0.72rem;
+    line-height: 1.25;
+    vertical-align: middle;
+  }
+
+  p.table-foot {
+    font-family: 'Inter', sans-serif;
+    font-size: 12px;
+    color: var(--muted);
+    margin: 0.45rem 0 0;
+    line-height: 1.45;
+  }
+
+  /* Lists */
+  ul.clean { padding-left: 22px; margin: 14px 0 18px; }
+  ul.clean li { margin: 6px 0; }
+
+  /* BibTeX */
+  .bibtex-wrap {
+    position: relative;
+    background: #1a1a1a;
+    border-radius: var(--radius);
+    overflow: hidden;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.06), 0 8px 24px rgba(0,0,0,0.08);
+  }
+  .bibtex-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 16px;
+    background: #232323;
+    border-bottom: 1px solid #303030;
+  }
+  .bibtex-header span {
+    font-family: 'Inter', sans-serif;
+    font-size: 12px;
+    color: #b9b9b9;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+  .copy-btn {
+    background: transparent;
+    border: 1px solid #404040;
+    color: #d6d6d6;
+    padding: 4px 12px;
+    border-radius: 6px;
+    font-family: 'Inter', sans-serif;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .copy-btn:hover { background: #303030; color: #fff; }
+  .copy-btn.copied { background: var(--accent); border-color: var(--accent); color: #fff; }
+  pre.bibtex {
+    margin: 0;
+    padding: 18px 20px;
+    color: #ececec;
+    font-family: 'JetBrains Mono', 'SF Mono', Menlo, Consolas, monospace;
+    font-size: 13px;
+    line-height: 1.6;
+    overflow-x: auto;
+  }
+
+  /* Footer */
+  footer {
+    padding: 48px 0 64px;
+    border-top: 1px solid var(--line);
+    background: var(--bg-soft);
+    color: var(--muted);
+    font-size: 14px;
+    font-family: 'Inter', sans-serif;
+    text-align: center;
+  }
+  footer a { color: var(--ink-soft); }
+
+  /* Small helpers */
+  .em { color: var(--accent); font-style: italic; }
+  .nowrap { white-space: nowrap; }
+  code.inline {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.88em;
+    background: var(--code-bg);
+    padding: 2px 6px;
+    border-radius: 4px;
+    color: var(--ink);
+  }
+
+  /* Lightweight inline math: STIX Two Text reads closer to textbook / journal math */
+  .m {
+    font-family: var(--font-math);
+    font-style: italic;
+    font-weight: 500;
+    font-size: 1.04em;
+    font-feature-settings: "kern", "liga";
+    letter-spacing: 0.01em;
+    white-space: nowrap;
+  }
+  .m b { font-weight: 700; font-style: italic; }
+  .m sub, .m sup { font-style: normal; font-size: 0.68em; line-height: 0; font-weight: 600; }
+  .m sub { vertical-align: -0.28em; }
+  .m sup { vertical-align: 0.5em; }
+  .mi {
+    font-family: var(--font-math);
+    font-style: normal;
+    font-weight: 500;
+    font-size: 1.02em;
+    letter-spacing: 0.02em;
+  }
+
+  /* Display math (MathJax CHTML), same TeX pipeline as docs/index.html */
+  .equation-block .math-block {
+    background: var(--bg-card);
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--accent);
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    padding: 1rem 1.25rem;
+    margin: 0;
+    overflow-x: auto;
+    text-align: center;
+  }
+  mjx-container {
+    color: var(--ink) !important;
+  }
+
+  /* Mobile */
+  @media (max-width: 640px) {
+    .hero { padding: 56px 0 24px; }
+    .buttons { gap: 8px; }
+    .btn { padding: 9px 14px; font-size: 13px; }
+    section { padding: 44px 0; }
+    h3.section-h { font-size: 24px; margin-bottom: 22px; }
+    h4.subsection { font-size: 19px; }
+    .figure { padding: 16px 14px; }
+    .tldr { padding: 18px 18px; font-size: 16px; }
+    pre.bibtex { font-size: 12px; padding: 14px 16px; }
+    .results-table { font-size: 0.68rem; }
+    .results-table th, .results-table td { padding: 0.35rem 0.2rem; }
+    .results-table.sft-table { font-size: 0.68rem; }
     .results-table.sft-table th,
-    .results-table.sft-table td {
-      padding: 0.38rem 0.35rem;
-    }
-    .results-table.sft-table thead tr:first-child th[rowspan] {
-      vertical-align: middle;
-      text-align: left;
-      border-right: 2px solid #000;
-    }
-    .results-table.sft-table thead tr:first-child th:not(:first-child) {
-      text-align: center;
-    }
-    .results-table.sft-table thead tr:nth-child(2) th,
-    .results-table.sft-table thead tr:nth-child(3) th {
-      text-align: center;
-    }
-    .results-table.sft-table thead tr:first-child th:nth-child(2),
-    .results-table.sft-table thead tr:nth-child(2) th:nth-child(2),
-    .results-table.sft-table thead tr:nth-child(3) th:nth-child(4) {
-      border-right: 2px solid #000;
-    }
-    .results-table.sft-table tbody td:first-child {
-      text-align: left;
-      border-right: 2px solid #000;
-    }
-    .results-table.sft-table tbody td:nth-child(5) {
-      border-right: 2px solid #000;
-    }
-    .results-table.sft-table thead tr:first-child th {
-      border-bottom: 1px solid #ccc;
-    }
-    .results-table.sft-table thead tr:nth-child(2) th {
-      border-bottom: 1px solid #ccc;
-    }
-    .results-table.sft-table thead tr:nth-child(3) th {
-      font-size: 0.7rem;
-      font-weight: 600;
-      border-bottom: 2px solid #000;
-    }
-    .results-table.sft-table .best {
-      font-weight: 700;
-      text-decoration: none;
-    }
-    .results-table.sft-table tbody tr:last-child td {
-      background: #ececec;
-    }
-
-    .callout-box {
-      background: #fff;
-      border: 1px solid #ddd;
-      border-radius: 8px;
-      padding: 1.25rem 1.5rem;
-      margin: 1.25rem 0;
-      text-align: left;
-      color: #000;
-    }
-    .callout-box .callout-title { font-weight: 700; color: #000; margin-bottom: 0.75rem; }
-
-    #references ol li {
-      margin-bottom: 0.75rem;
-      line-height: 1.55;
-      color: #000;
-      font-size: 0.92rem;
-    }
-
-    .site-footer {
-      background: #fff;
-      color: #000;
-      padding: 2.5rem 1.5rem;
-      text-align: center;
-      font-size: 0.88rem;
-      line-height: 1.7;
-      border-top: 1px solid #e0e0e0;
-    }
-    .site-footer a {
-      color: #000;
-      text-decoration: underline;
-    }
-    .site-footer a:hover { opacity: 0.7; }
-    .footer-license {
-      margin-top: 0.5rem;
-      font-size: 0.8rem;
-      color: #000;
-    }
-
-    #back-to-top {
-      position: fixed;
-      bottom: 2rem;
-      right: 2rem;
-      z-index: 999;
-      width: 44px;
-      height: 44px;
-      border-radius: 50%;
-      background: #000;
-      color: #fff;
-      border: none;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 1.1rem;
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity 0.25s ease;
-    }
-    #back-to-top.visible { opacity: 1; pointer-events: all; }
-    #back-to-top:hover { opacity: 0.85; }
-
-    @media (max-width: 768px) {
-      .publication-title { font-size: 1.75rem !important; }
-      .hero-gradient { padding: 3rem 1rem 2.5rem; }
-      .two-col-figures .figure-panel {
-        max-width: 100%;
-        flex: 1 1 100%;
-      }
-      .results-table { font-size: 0.68rem; }
-      .results-table th, .results-table td { padding: 0.35rem 0.2rem; }
-      .results-table.sft-table { font-size: 0.68rem; }
-      .results-table.sft-table th,
-      .results-table.sft-table td { padding: 0.3rem 0.18rem; }
-    }
-  </style>
+    .results-table.sft-table td { padding: 0.3rem 0.18rem; }
+  }
+</style>
 </head>
 <body>
 
-<section id="top" class="hero-gradient">
-  <div class="container is-max-desktop has-text-centered">
-    <h1 class="publication-title"><span class="accent">Pion</span></h1>
-    <h2 class="publication-subtitle">
-      A Spectrum-Preserving Optimizer via Orthogonal Equivalence Transformation
-    </h2>
+<!-- =================== Hero =================== -->
+<header class="hero">
+  <div class="container">
+    <span class="eyebrow">SphereLab · Technical Report</span>
+    <h1 class="title">
+      <span class="pion-name">Pion</span>: A Spectrum-Preserving Optimizer<br/>
+      via Orthogonal Equivalence Transformation
+    </h1>
+    <p class="subtitle">
+      An LLM optimizer that updates each weight matrix through coupled left and right
+      orthogonal transformations &mdash; preserving its singular spectrum throughout training.
+    </p>
 
-    <div style="margin-top: 1.75rem;">
-      <div style="margin-bottom: 0.5rem;">
-        <span class="author-block">Kexuan Shi<sup>1,†</sup></span>,
-        <span class="author-block">Hanxuan Li<sup>1,†</sup></span>,
-        <span class="author-block">Zeju Qiu<sup>1,2</sup></span>,
-        <span class="author-block">Yandong Wen<sup>3</sup></span>,
-        <span class="author-block">Simon Buchholz<sup>2</sup></span>,
-        <span class="author-block">Weiyang Liu<sup>1,*</sup></span>
-      </div>
-      <div style="margin-top: 0.55rem;">
-        <span class="affil-block"><sup>1</sup>The Chinese University of Hong Kong &nbsp;·&nbsp;</span>
-        <span class="affil-block"><sup>2</sup>Max Planck Institute for Intelligent Systems &nbsp;·&nbsp;</span>
-        <span class="affil-block"><sup>3</sup>Westlake University</span>
-      </div>
-      <p style="color: #000; font-size: 0.85rem; margin-top: 0.75rem;">
-        † Equal contribution &nbsp;·&nbsp; * Corresponding author
-      </p>
+    <div class="authors">
+      <span class="author">Kexuan Shi<sup>1,†</sup></span><span class="author-sep">, </span>
+      <span class="author">Hanxuan Li<sup>1,†</sup></span><span class="author-sep">, </span>
+      <span class="author">Zeju Qiu<sup>1,2</sup></span><span class="author-sep">, </span>
+      <span class="author">Yandong Wen<sup>3</sup></span><span class="author-sep">, </span>
+      <span class="author">Simon Buchholz<sup>2</sup></span><span class="author-sep">, </span>
+      <span class="author">Weiyang Liu<sup>1,*</sup></span>
     </div>
+    <div class="affiliations">
+      <span><sup>1</sup>The Chinese University of Hong Kong</span>
+      <span class="affil-sep">·</span>
+      <span><sup>2</sup>Max Planck Institute for Intelligent Systems</span>
+      <span class="affil-sep">·</span>
+      <span><sup>3</sup>Westlake University</span>
+    </div>
+    <div class="submission-note">† Equal contribution · * Corresponding author</div>
 
-    <div class="publication-links">
-      <!-- arXiv: replace href and remove class paper-arxiv-pending when the entry is public -->
-      <a href="#" class="external-link btn-primary paper-arxiv-pending" id="paper-arxiv" tabindex="-1" aria-disabled="true" title="arXiv link will be added when the paper is posted">
-        <i class="ai ai-arxiv" aria-hidden="true"></i>
-        <span>Paper (arXiv)</span>
+    <div class="buttons">
+      <a class="btn" href="#" aria-label="Paper PDF">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="15" x2="15" y2="15"/><line x1="9" y1="11" x2="15" y2="11"/></svg>
+        Paper
       </a>
-      <a href="https://spherelab.ai/pion" class="external-link btn-outline" rel="noopener">
-        <i class="fas fa-link"></i>
-        <span>Project</span>
+      <a class="btn secondary" href="#" aria-label="arXiv">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        arXiv
+      </a>
+      <a class="btn secondary" href="#" aria-label="Code">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+        Code
+      </a>
+      <a class="btn secondary" href="#bibtex" aria-label="BibTeX">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+        BibTeX
       </a>
     </div>
   </div>
-</section>
+</header>
 
-<section id="abstract" class="content-section">
-  <div class="container is-max-desktop">
-    <div class="columns is-centered has-text-centered">
-      <div class="column is-four-fifths">
-        <h2 class="title is-3 section-title">Abstract</h2>
-        <div class="content has-text-justified">
-          <p>
-            We introduce <strong>Pion</strong>, a spectrum-preserving optimizer for large language model (LLM) training based on <strong>orthogonal equivalence transformation</strong>. Unlike additive optimizers such as Adam and Muon, Pion updates each weight matrix through <strong>left and right orthogonal transformations</strong>, preserving its singular values throughout training. This modulates the geometry of weights while keeping spectral norm fixed. We derive the update rule, study design choices (momentum, alternation, exponential map approximations), and analyze convergence. Empirically, Pion is a <strong>stable and competitive</strong> alternative for LLM pretraining and finetuning—including challenging settings without normalization and at extreme depth.
-          </p>
-        </div>
-        <div class="callout-box has-text-left">
-          <p class="callout-title">Takeaways</p>
-          <ul style="margin-left: 1rem; line-height: 1.65;">
-            <li><strong>Spectrum control:</strong> Optimization on the iso-spectral manifold; weight singular values fixed, update norms bounded—compatible with μP-style stability goals.</li>
-            <li><strong>Minimum-energy bias:</strong> Orthogonal equivalence preserves hyperspherical energy from standard Gaussian initialization.</li>
-            <li><strong>No reparameterization:</strong> Unlike POET’s auxiliary \( \mathbf{R},\mathbf{P} \) around fixed \( \mathbf{W}_0 \), Pion acts directly on \( \mathbf{W} \) with the same spectral geometry.</li>
-          </ul>
-        </div>
+<!-- =================== Teaser =================== -->
+<section class="teaser">
+  <div class="container">
+    <div class="teaser-figure">
+      <object data="static/figures/poet_poin_v1.svg" type="image/svg+xml" aria-label="POET vs Pion comparison diagram">
+        <img src="static/figures/poet_poin_v1.png" alt="POET vs Pion comparison" />
+      </object>
+      <div class="teaser-caption">
+        <strong>Pion vs. POET.</strong> POET reparameterizes each weight as
+        <span class="m"><b>W</b>&thinsp;=&thinsp;<b>R</b>&thinsp;<b>W</b><sub>0</sub>&thinsp;<b>P</b></span>
+        and trains the orthogonal factors instead of the weights.
+        Pion removes the reparameterization and instead applies left and right orthogonal
+        transformations directly to <span class="m"><b>W</b><sub>t</sub></span>, preserving its
+        singular-value spectrum without introducing auxiliary parameters.
       </div>
     </div>
   </div>
 </section>
 
-<section id="poet-vs-pion" class="content-section">
-  <div class="container is-max-desktop has-text-centered">
-    <h2 class="title is-3 section-title">POET vs. Pion</h2>
-    <div class="columns is-centered">
-      <div class="column is-four-fifths content has-text-justified">
-        <p>
-          POET learns \( \mathbf{W}_{RP} = \mathbf{R}\mathbf{W}_0\mathbf{P} \) with fixed random \( \mathbf{W}_0 \). Pion applies coupled orthogonal actions to the <em>current</em> weights without fixing a base matrix—preserving singular values while simplifying training dynamics.
-        </p>
-      </div>
+<!-- =================== Abstract =================== -->
+<section id="abstract">
+  <div class="container-narrow">
+    <h2 class="section-title">Abstract</h2>
+    <h3 class="section-h">A new geometric route to stable LLM training.</h3>
+
+    <div class="tldr">
+      <span class="tldr-label">TL;DR</span>
+      Pion treats each weight matrix as living on an iso&#8209;spectral manifold and updates it via
+      coupled left and right orthogonal transformations. The spectrum is preserved by construction,
+      <span class="mi">μP</span>-compatibility follows naturally, and the optimizer remains competitive with
+      AdamW and Muon across pretraining, supervised finetuning, and RLVR.
     </div>
-    <div class="figure-panel">
-      <img src="./images/poet_poin_v1-1.png" alt="Comparison of POET and Pion update diagrams" class="figure-img">
-      <p class="figure-caption">Comparison of POET’s reparameterized update and Pion’s direct spectrum-preserving update (green: learnable quantities).</p>
-    </div>
+
+    <p>
+      We introduce <span class="em">Pion</span>, a spectrum-preserving optimizer for large language
+      model training based on orthogonal equivalence transformations. Unlike additive optimizers
+      such as AdamW and Muon, Pion updates each weight matrix through left and right orthogonal
+      transformations, preserving its singular values throughout training. This yields an
+      optimization mechanism that modulates the geometry of weight matrices while keeping their
+      spectral norm fixed. We derive Pion's update rule, systematically examine its design
+      choices, and analyze its convergence behavior along with several key properties. Empirical
+      results show that Pion offers a stable and competitive alternative to standard optimizers
+      for both LLM pretraining and finetuning.
+    </p>
   </div>
 </section>
 
-<div id="method" class="section-divider">
-  <div class="divider-pill">Method</div>
-  <h2>Update rule, momentum, and efficient variants</h2>
-  <p class="divider-subtitle">Lie algebra · Transport · Alternating sides · exp(·) approximation</p>
-</div>
+<!-- =================== Highlights =================== -->
+<section id="highlights">
+  <div class="container">
+    <h2 class="section-title">Why Pion</h2>
+    <h3 class="section-h">Spectrum control as a first-class optimizer property.</h3>
 
-<section class="content-section">
-  <div class="container is-max-desktop">
-    <div class="columns is-centered has-text-centered">
-      <div class="column is-four-fifths">
-        <h2 class="title is-3 section-title">Spectrum-preserving step</h2>
-        <div class="content has-text-justified">
-          <p>With gradient \( \mathbf{G}_t \), skew projections and two-sided orthogonal update:</p>
-          <div class="math-block" style="text-align: center;">
-            \[
-            \begin{aligned}
-            \mathbf{G}_t^{\mathrm{in}} &= \mathbf{W}_t^\top \mathbf{G}_t - (\mathbf{W}_t^\top \mathbf{G}_t)^\top, \qquad
-            \mathbf{G}_t^{\mathrm{out}} = \mathbf{G}_t \mathbf{W}_t^\top - (\mathbf{G}_t \mathbf{W}_t^\top)^\top, \\
-            \mathbf{W}_{t+1} &= \exp(-\eta \mathbf{G}_t^{\mathrm{out}})\, \mathbf{W}_t\, \exp(-\eta \mathbf{G}_t^{\mathrm{in}}).
-            \end{aligned}
-            \]
-          </div>
+    <div class="highlights">
+      <div class="highlight-card">
+        <div class="icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
         </div>
-
-        <h2 class="title is-3 section-title" style="margin-top: 2.5rem;">First-order momentum variants</h2>
-        <p class="content has-text-justified">Lie-algebra momentum, ambient momentum, and parallel transport of momentum onto the tangent space at the new iterate—the transported and Lie variants track optimization geometry more faithfully.</p>
-        <div class="figure-panel">
-          <img src="./images/momentum_loss_curves-1.png" alt="Training loss under different momentum variants" class="figure-img">
-          <p class="figure-caption">Training loss comparing momentum designs; Lie-type accumulation tends to converge faster.</p>
-        </div>
-
-        <h2 class="title is-3 section-title" style="margin-top: 2rem;">Bilateral vs. alternate update</h2>
-        <p class="content has-text-justified">Applying only one of the two orthogonal factors per step cuts cost while staying on the same design principles; final loss can match bilateral training within a small margin.</p>
-        <div class="figure-panel">
-          <img src="./images/alternate_update-1.png" alt="Bilateral versus alternate Pion updates" class="figure-img">
-          <p class="figure-caption">Bilateral vs. alternate updates for representative Pion momentum configurations.</p>
-        </div>
-
-        <h2 class="title is-3 section-title" style="margin-top: 2rem;">Approximating \( \exp(\cdot) \)</h2>
-        <p class="content has-text-justified">Matrix exponentials are approximated (e.g. truncated series or Cayley-type maps). A low-order expansion suffices because error does not compound the same way as in generic manifold integrators—see paper for analysis.</p>
-        <div class="figure-panel">
-          <img src="./images/different_approximation_of_exp-1.png" alt="Effect of exponential map approximations" class="figure-img">
-          <p class="figure-caption">Loss and singular-value behavior under different \( \exp \) approximations.</p>
-        </div>
+        <h5>Algorithmic spectrum control</h5>
+        <p>The update rule lives on the iso-spectral manifold of
+        <span class="m"><b>W</b><sub>0</sub></span>. Singular values are preserved exactly &mdash;
+        no explicit normalization or projection needed.</p>
       </div>
-    </div>
-  </div>
-</section>
 
-<div id="results" class="section-divider">
-  <div class="divider-pill">Experiments</div>
-  <h2>Pretraining, post-training, and stress tests</h2>
-  <p class="divider-subtitle">Stable pretrain · No-norm & depth · μP · Benchmarks · SFT · RLVR</p>
-</div>
-
-<section class="content-section">
-  <div class="container is-max-desktop">
-    <div class="columns is-centered has-text-centered">
-      <div class="column is-four-fifths">
-        <h2 class="title is-3 section-title" id="pretrain">Stable pretraining (1.3B)</h2>
-        <p class="content has-text-justified">Long-horizon C4 pretraining with matched optimizers: Pion tracks diagnostic quantities more evenly than AdamW/Muon (e.g. max attention logit, activation norms).</p>
-        <div class="figure-panel">
-          <img src="./images/norm_in_pretraining_v3-1.png" alt="Norm and stability-related quantities during LLM pretraining" class="figure-img">
-          <p class="figure-caption">Dynamics of stability-related quantities during pretraining; Pion keeps trajectories comparatively flat.</p>
+      <div class="highlight-card">
+        <div class="icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
         </div>
+        <h5>Minimum hyperspherical energy</h5>
+        <p>Orthogonal equivalence transformations preserve the minimum-energy configuration of
+        zero-mean Gaussian initialization, keeping neurons uniformly distributed on the
+        hypersphere throughout training.</p>
+      </div>
 
-        <div class="figure-panel">
-          <img src="./images/full_spectrum_pion-1.png" alt="Singular value spectra during training" class="figure-img">
-          <p class="figure-caption">Evolution of weight singular-value spectra—Pion preserves the initial spectrum shape throughout training.</p>
+      <div class="highlight-card">
+        <div class="icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l3-9 4 18 3-9h4"/></svg>
         </div>
+        <h5>Naturally <span class="mi">μP</span>-compatible</h5>
+        <p>Pion satisfies the forward spectral condition by construction. A simple bilateral
+        normalization on the spectral norms of <span class="m"><b>G</b><sup>in</sup></span> and
+        <span class="m"><b>G</b><sup>out</sup></span> delivers learning-rate transfer across
+        model widths.</p>
+      </div>
 
-        <h2 class="title is-3 section-title" style="margin-top: 2rem;">Normalization-free pretraining</h2>
-        <p class="content has-text-justified">Removing normalization layers from a 60M LLaMA: AdamW and Muon eventually overflow; Pion remains stable over the full token budget.</p>
-        <div class="figure-panel">
-          <img src="./images/pion_nonorm_loss_curves_piecewise_xy-1.png" alt="Loss without normalization layers" class="figure-img">
-          <p class="figure-caption">Training loss when all normalization layers are removed.</p>
+      <div class="highlight-card">
+        <div class="icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
         </div>
+        <h5>Stable under stress</h5>
+        <p>Trains successfully on 200-layer networks and on models with <em>no</em> normalization
+        layers &mdash; both regimes where AdamW and Muon diverge.</p>
+      </div>
 
-        <h2 class="title is-3 section-title" style="margin-top: 2rem;">Ultra-deep architectures</h2>
-        <p class="content has-text-justified">Scaling depth stresses optimization; Pion exhibits smoother loss bands and competitive convergence.</p>
-        <div class="two-col-figures">
-          <div class="figure-panel">
-            <img src="./images/deepnet_3-1.png" alt="Smoothed training loss for very deep models" class="figure-img">
-            <p class="figure-caption">Smoothed training loss for very deep models; shaded band reflects local loss variability.</p>
-          </div>
-          <div class="figure-panel">
-            <img src="./images/jacobian_norm-1.png" alt="Jacobian norm across layers in DeepNet" class="figure-img">
-            <p class="figure-caption">Layer-wise Jacobian deviation from identity (\(\lVert J_\ell - I \rVert_F\)) in DeepNet; Pion maintains stronger expressivity in deeper layers.</p>
-          </div>
+      <div class="highlight-card">
+        <div class="icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
         </div>
+        <h5>Convergent and well-behaved</h5>
+        <p>We prove an <span class="m">𝒪(1/&radic;<i>T</i>&thinsp;)</span> stationarity bound on the
+        iso-spectral manifold under standard <span class="m">L</span>-smoothness and
+        bounded-noise assumptions.</p>
+      </div>
 
+      <div class="highlight-card">
+        <div class="icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="13 17 18 12 13 7"/><polyline points="6 17 11 12 6 7"/></svg>
+        </div>
+        <h5>Competitive everywhere</h5>
+        <p>Best average benchmark score on LLaMA-1.3B pretraining, best stability-plasticity
+        tradeoff on SFT, and the strongest RLVR results on Qwen3-1.7B and DeepSeek-R1-Distill.</p>
       </div>
     </div>
   </div>
 </section>
 
-<div id="mup" class="section-divider">
-  <div class="divider-pill">Width scaling</div>
-  <h2>μP compatibility and hyperparameter transfer</h2>
-  <p class="divider-subtitle">Forward spectrum from weights · update scaling via Lie factors</p>
-</div>
+<!-- =================== Method =================== -->
+<section id="method">
+  <div class="container-narrow">
+    <h2 class="section-title">Method</h2>
+    <h3 class="section-h">Two rotations, one identity, zero reparameterization.</h3>
 
-<section class="content-section">
-  <div class="container is-max-desktop">
-    <div class="columns is-centered has-text-centered">
-      <div class="column is-four-fifths">
-        <div class="content has-text-justified">
-          <p>
-            Pion fixes weight singular values, so forward spectral scaling is built in. Controlling norms of \( \mathbf{G}^{\mathrm{in}}, \mathbf{G}^{\mathrm{out}} \) (normalization or orthogonalization) targets the update side of μP. Experiments on Llama- and Qwen-style widths show <strong>stable learning-rate transfer</strong> across scales when using a μP-compatible Pion variant.
-          </p>
-        </div>
-        <div class="figure-panel" style="max-width: 720px;">
-          <img src="./images/mup_main-1.png" alt="muP learning rate transfer across model scales" class="figure-img">
-          <p class="figure-caption">μP-style hyperparameter transfer across model widths (main text).</p>
-        </div>
+    <h4 class="subsection">The core update rule</h4>
+    <p>
+      For any weight matrix
+      <span class="m"><b>W</b><sub>t</sub> &isin; &#8477;<sup>d<sub>out</sub>&times;d<sub>in</sub></sup></span>,
+      we can trivially write
+      <span class="m"><b>W</b><sub>t</sub>&thinsp;=&thinsp;<b>I</b><sub>d<sub>out</sub></sub>&thinsp;<b>W</b><sub>t</sub>&thinsp;<b>I</b><sub>d<sub>in</sub></sub></span>.
+      Geometrically, each identity is the neutral element of an orthogonal group. Pion evolves
+      these identity factors directly on the orthogonal group, which induces left and right
+      orthogonal transformations on <span class="m"><b>W</b><sub>t</sub></span> &mdash; preserving
+      its singular values.
+    </p>
 
-        <h2 class="title is-3 section-title" style="margin-top: 2rem;">Downstream benchmarks (Table 1)</h2>
-        <p class="content has-text-justified">LLaMA-1.3B, ~54B tokens, T5 tokenizer, seq. 256. Pion reports the strongest average on the paper’s evaluation suite; validation loss is competitive with Muon and better than AdamW.</p>
-        <div style="overflow-x: auto;">
-          <table class="results-table">
-            <thead>
-              <tr>
-                <th>Method</th><th>ARC-C</th><th>ARC-E</th><th>BoolQ</th><th>Hella.</th><th>PIQA</th><th>SciQ</th><th>TriviaQA</th><th>Wino.</th><th>Avg</th><th>Val Loss</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td>AdamW</td><td>25.94</td><td>45.96</td><td>46.30</td><td>45.10</td><td>71.27</td><td>70.80</td><td>1.06</td><td>51.46</td><td>44.74</td><td>2.7700</td>
-              </tr>
-              <tr>
-                <td>Muon</td><td>25.34</td><td>47.94</td><td>51.56</td><td>46.70</td><td>72.20</td><td>71.60</td><td>1.64</td><td>53.75</td><td>46.34</td><td>2.7225</td>
-              </tr>
-              <tr>
-                <td><strong>Pion</strong></td>
-                <td class="best">26.79</td><td class="best">49.41</td><td class="best">57.58</td><td class="best">47.34</td>
-                <td>71.27</td><td class="best">73.40</td><td class="best">2.17</td><td>53.59</td><td class="best">47.69</td><td>2.7350</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+    <div class="equation-block">
+      <div class="eq-label">Pion update rule</div>
+      <div class="math-block">
+        \[
+        \begin{aligned}
+        \mathbf{G}_t^{\mathrm{in}} &amp;= \mathbf{W}_t^\top \mathbf{G}_t - (\mathbf{W}_t^\top \mathbf{G}_t)^\top, \qquad
+        \mathbf{G}_t^{\mathrm{out}} = \mathbf{G}_t \mathbf{W}_t^\top - (\mathbf{G}_t \mathbf{W}_t^\top)^\top, \\
+        \mathbf{W}_{t+1} &amp;= \exp(-\eta \mathbf{G}_t^{\mathrm{out}})\, \mathbf{W}_t\, \exp(-\eta \mathbf{G}_t^{\mathrm{in}}).
+        \end{aligned}
+        \]
+      </div>
+    </div>
 
-        <h2 class="title is-3 section-title" style="margin-top: 2.5rem;" id="sft">Supervised finetuning (Table 2)</h2>
-        <p class="content has-text-justified">
-          Full-parameter SFT with LLaMA-Factory on MetaMathQA and Magicoder-Evol-Instruct-110K. <strong>ID</strong> = in-domain (GSM8K for math, HumanEval for code); <strong>OOD</strong> = out-of-domain generalization. Bold = best among optimizers per column (excluding base).
-        </p>
-        <div style="overflow-x: auto;">
-          <table class="results-table sft-table">
-            <thead>
-              <tr>
-                <th rowspan="3">Method</th>
-                <th colspan="4">Qwen2.5-1.5B</th>
-                <th colspan="4">Llama3.2-3B</th>
-              </tr>
-              <tr>
-                <th colspan="2">Math</th>
-                <th colspan="2">Code</th>
-                <th colspan="2">Math</th>
-                <th colspan="2">Code</th>
-              </tr>
-              <tr>
-                <th>ID (%)</th>
-                <th>OOD (%)</th>
-                <th>ID (%)</th>
-                <th>OOD (%)</th>
-                <th>ID (%)</th>
-                <th>OOD (%)</th>
-                <th>ID (%)</th>
-                <th>OOD (%)</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td>Base</td>
-                <td>59.81</td><td>64.83</td><td>35.98</td><td>63.99</td>
-                <td>25.47</td><td>67.59</td><td>26.22</td><td>53.08</td>
-              </tr>
-              <tr>
-                <td>AdamW</td>
-                <td class="best">65.88</td><td>62.13</td><td>51.83</td><td>62.64</td>
-                <td class="best">59.87</td><td>60.86</td><td>46.95</td><td>58.64</td>
-              </tr>
-              <tr>
-                <td>Muon</td>
-                <td>65.27</td><td>61.22</td><td>50.00</td><td>62.41</td>
-                <td>57.77</td><td class="best">61.20</td><td>46.34</td><td>58.88</td>
-              </tr>
-              <tr>
-                <td><strong>Pion</strong></td>
-                <td>65.76</td><td class="best">62.16</td><td class="best">53.05</td><td class="best">63.21</td>
-                <td>58.83</td><td>60.44</td><td class="best">47.19</td><td class="best">59.74</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-        <p class="is-size-7" style="color:#000;">All numbers in <strong>%</strong> (accuracy). ID = in-domain, OOD = out-of-domain; <strong>bold</strong> = best per column among optimizers (excluding Base). Gray row = Pion. Table 2 in the paper.</p>
+    <p>
+      The skew-symmetrization projects the gradients onto the Lie algebra; the matrix exponential
+      maps them back to the Lie group, producing valid orthogonal transformations. Because
+      <span class="m"><b>R</b><sub>t</sub>&thinsp;=&thinsp;exp(&minus;η&thinsp;<b>G</b><sub>t</sub><sup>out</sup>)</span>
+      and
+      <span class="m"><b>P</b><sub>t</sub>&thinsp;=&thinsp;exp(&minus;η&thinsp;<b>G</b><sub>t</sub><sup>in</sup>)</span>
+      are orthogonal, the row and column <span class="m">&#8467;<sub>2</sub></span> norms of
+      <span class="m"><b>W</b><sub>t</sub></span> are preserved &mdash; the update is pure angular
+      motion rather than rescaling.
+    </p>
 
-        <h2 class="title is-3 section-title" style="margin-top: 2.5rem;" id="rlvr">RL with verifiable reward (Table 3)</h2>
-        <p class="content has-text-justified">
-          GRPO training with VeRL on DeepMath; evaluation on AIME24/25, AMC23, Minerva Math, and OlympiadBench. <strong>avg@K</strong> = mean accuracy over K samples per problem. Bold = best among AdamW, Muon, and Pion per column (excluding base).
-        </p>
-        <div class="figure-panel">
-          <img src="./images/rl_v2-1.png" alt="RLVR training curves for GRPO with verifiable reward" class="figure-img">
-          <p class="figure-caption">RLVR training dynamics (GRPO with VeRL on DeepMath); shaded bands indicate variability across runs where applicable.</p>
-        </div>
-        <div style="overflow-x: auto;">
-          <table class="results-table">
-            <thead>
-              <tr>
-                <th rowspan="2">Method</th>
-                <th colspan="6">Qwen3-1.7B</th>
-                <th colspan="6">DeepSeek-R1-Distill-Qwen-1.5B</th>
-              </tr>
-              <tr class="subhead">
-                <th>AIME24<br>avg@32</th>
-                <th>AIME25<br>avg@32</th>
-                <th>AMC23<br>avg@8</th>
-                <th>Minerva<br>avg@4</th>
-                <th>Olymp.<br>avg@8</th>
-                <th>Avg</th>
-                <th>AIME24<br>avg@32</th>
-                <th>AIME25<br>avg@32</th>
-                <th>AMC23<br>avg@8</th>
-                <th>Minerva<br>avg@4</th>
-                <th>Olymp.<br>avg@8</th>
-                <th>Avg</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td>Base</td>
-                <td>4.06</td><td>10.10</td><td>30.27</td><td>16.27</td><td>23.67</td><td>16.87</td>
-                <td>20.52</td><td>20.83</td><td>54.06</td><td>19.39</td><td>36.20</td><td>30.20</td>
-              </tr>
-              <tr>
-                <td>AdamW</td>
-                <td>22.71</td><td>20.94</td><td>58.43</td><td>25.91</td><td>46.09</td><td>34.82</td>
-                <td>25.42</td><td>23.94</td><td>62.65</td><td>23.16</td><td>44.69</td><td>35.97</td>
-              </tr>
-              <tr>
-                <td>Muon</td>
-                <td>20.42</td><td>19.27</td><td>54.22</td><td>24.08</td><td>42.41</td><td>32.08</td>
-                <td>29.06</td><td>23.33</td><td>66.72</td><td>22.89</td><td>44.61</td><td>37.32</td>
-              </tr>
-              <tr>
-                <td><strong>Pion</strong></td>
-                <td class="best">25.42</td><td class="best">21.98</td><td class="best">59.94</td><td class="best">26.84</td><td class="best">46.43</td><td class="best">36.12</td>
-                <td class="best">30.00</td><td class="best">24.38</td><td class="best">66.87</td><td class="best">23.90</td><td class="best">46.43</td><td class="best">38.32</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-        <p class="is-size-7" style="color:#000;">Each benchmark is <strong>avg@K</strong> accuracy (%): AIME24 avg@32, AIME25 avg@32, AMC23 avg@8, Minerva Math avg@4, OlympiadBench avg@8. <strong>Avg</strong> = mean of the five. Table 3 in the paper. See PDF for training details (VeRL, POLARIS eval, decoding settings).</p>
+    <h4 class="subsection">Design principles for practical training</h4>
+    <p>
+      We turn the bare rule above into a usable optimizer by studying four design axes empirically:
+    </p>
+    <ul class="clean">
+      <li><strong>Consistent updates.</strong> RMS-controlled per-weight scaling keeps rotational
+      magnitudes scale-proportional across matrices and unlocks large learning rates.</li>
+      <li><strong>Momentum, the right way.</strong> The Lie-algebra variants accumulate the in- and
+      out-side skew-symmetric gradients directly inside a single tangent space, sidestepping the
+      parallel-transport problem and matching the geometry of the update.</li>
+      <li><strong>Alternate updates.</strong> Alternating between in-side and out-side rotations
+      across steps stays within <span class="m">&#8776;&thinsp;0.23%</span> of the bilateral
+      training loss while roughly halving the optimizer-side compute.</li>
+      <li><strong>Second-order exponential.</strong> Each update starts from the identity, so
+      errors do not compound. A two-term truncation
+      <span class="m">exp(<b>A</b>)&thinsp;&#8776;&thinsp;<b>I</b>&thinsp;+&thinsp;<b>A</b>&thinsp;+&thinsp;½&thinsp;<b>A</b><sup>2</sup></span>
+      is both sufficient and fast.</li>
+    </ul>
 
+    <div class="figure">
+      <img class="fw-760" src="static/figures/momentum_loss_curves.png" alt="Momentum design ablation losses" />
+      <div class="figure-caption">
+        <span class="fig-label">Figure</span>
+        Training-loss curves for different momentum designs. Lie-algebra momentum (used in the final
+        Pion algorithm) consistently outperforms ambient-space momentum, and the
+        Lie&#8209;algebra first&#8209;order + Lie&#8209;algebra second&#8209;order combination is the strongest.
+      </div>
+    </div>
+
+    <h4 class="subsection">Convergence on the iso-spectral manifold</h4>
+    <p>
+      Under standard \(L\)-smoothness, lower-boundedness of
+      \(f\), and bounded stochastic-gradient noise
+      \(\mathbb{E}\| \xi_t \|_F^2 \le \sigma^2\),
+      Pion with step size \(\eta = C / \sqrt{T + 1}\)
+      satisfies:
+    </p>
+
+    <div class="equation-block">
+      <div class="math-block">
+        \[
+        \min_{0 \le t \le T} \mathbb{E}\Bigl[
+          \| \mathbf{G}_t^{\mathrm{in}} \|_F^2 + \| \mathbf{G}_t^{\mathrm{out}} \|_F^2
+        \Bigr]
+        \le \frac{C_1 + C_2}{\sqrt{T + 1}}
+        = \mathcal{O}\!\left(\frac{1}{\sqrt{T}}\right).
+        \]
+      </div>
+    </div>
+
+    <p>
+      The geometric structure of the update also gives a clean interpretation: the Frobenius norm
+      of <span class="m">Δ<b>W</b></span> measures the total rotational strength applied to
+      <span class="m"><b>W</b><sub>t</sub></span>, while the scaled norms
+      <span class="m">&#8197;&Vert;<b>G</b><sub>t</sub><sup>in</sup>&Vert;<sub>F</sub>&thinsp;/&thinsp;&radic;<i>d</i><sub>in</sub></span>
+      and
+      <span class="m">&#8197;&Vert;<b>G</b><sub>t</sub><sup>out</sup>&Vert;<sub>F</sub>&thinsp;/&thinsp;&radic;<i>d</i><sub>out</sub></span>
+      capture the average planar-rotation angles on the two sides.
+    </p>
+  </div>
+</section>
+
+<!-- =================== Results =================== -->
+<section id="results">
+  <div class="container">
+    <h2 class="section-title">Results</h2>
+    <h3 class="section-h">Stable pretraining, strong post-training, faithful <span class="mi">μP</span> transfer.</h3>
+
+    <!-- Pretraining -->
+    <h4 class="subsection">Stable LLM pretraining (LLaMA-1.3B, 54B tokens)</h4>
+    <p>
+      We pretrain a 1.3B-parameter LLaMA-based model on 54B C4 tokens &mdash;
+      <span class="m">2&times;</span> the Chinchilla-optimal budget. Pion attains the best average
+      benchmark score and validation loss comparable to Muon, while substantially outperforming
+      AdamW.
+    </p>
+
+    <div class="table-wrap">
+      <table class="results-table">
+        <thead>
+          <tr>
+            <th>Method</th>
+            <th>ARC-C</th>
+            <th>ARC-E</th>
+            <th>BoolQ</th>
+            <th>Hella.</th>
+            <th>PIQA</th>
+            <th>SciQ</th>
+            <th>TriviaQA</th>
+            <th>Wino.</th>
+            <th>Avg</th>
+            <th>Val Loss</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>AdamW</td>
+            <td>25.94</td><td>45.96</td><td>46.30</td><td>45.10</td>
+            <td>71.27</td><td>70.80</td><td>1.06</td><td>51.46</td>
+            <td>44.74</td><td>2.7700</td>
+          </tr>
+          <tr>
+            <td>Muon</td>
+            <td>25.34</td><td>47.94</td><td>51.56</td><td>46.70</td>
+            <td class="best">72.20</td><td>71.60</td><td>1.64</td><td class="best">53.75</td>
+            <td>46.34</td><td class="best">2.7225</td>
+          </tr>
+          <tr>
+            <td><strong>Pion</strong></td>
+            <td class="best">26.79</td><td class="best">49.41</td><td class="best">57.58</td><td class="best">47.34</td>
+            <td>71.27</td><td class="best">73.40</td><td class="best">2.17</td><td>53.59</td>
+            <td class="best">47.69</td><td>2.7350</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="figure">
+      <img class="fw-760" src="static/figures/norm_in_pretraining_v3.png" alt="Stability diagnostics during pretraining" />
+      <div class="figure-caption">
+        <span class="fig-label">Figure</span>
+        Four pretraining stability diagnostics on LLaMA-1.3B. Pion keeps the maximum attention
+        logit, SwiGLU activation norm, down-projection weight norm, and output norm essentially
+        flat throughout 54B tokens of training. AdamW's attention logits and activations grow
+        unboundedly; Muon controls logits but its activations and weight norms continue to drift.
+      </div>
+    </div>
+
+    <div class="fig-grid-2">
+      <div class="figure" style="margin: 0;">
+        <img class="fw-353" src="static/figures/o_layer1.png" alt="Singular spectrum of W_O at convergence" />
+        <div class="figure-caption">
+          <span class="fig-label">Figure</span>
+          Singular-value spectrum of an attention output projection at the end of training.
+          Pion exactly preserves the initial spectrum; AdamW and Muon drift.
+        </div>
+      </div>
+      <div class="figure" style="margin: 0;">
+        <img class="fw-353" src="static/figures/pion_nonorm_loss_curves_piecewise_xy.png" alt="Normalization-free training curves" />
+        <div class="figure-caption">
+          <span class="fig-label">Figure</span>
+          Normalization-free pretraining. After removing every normalization layer, AdamW and
+          Muon diverge to NaN; only Pion completes 9.6B tokens and converges cleanly.
+        </div>
+      </div>
+    </div>
+
+    <div class="fig-grid-2">
+      <div class="figure" style="margin: 0;">
+        <img class="fw-353" src="static/figures/deepnet_3.png" alt="Training loss for 200-layer LLaMA" />
+        <div class="figure-caption">
+          <span class="fig-label">Figure</span>
+          200-layer LLaMA on 50B tokens of C4. Pion has the smallest local-loss standard deviation
+          (<span class="m">σ&thinsp;=&thinsp;0.0892</span> vs. 0.0931 for AdamW and 0.0927 for Muon)
+          and the most efficient intermediate-stage descent.
+        </div>
+      </div>
+      <div class="figure" style="margin: 0;">
+        <img class="fw-353" src="static/figures/jacobian_norm.png" alt="Layer-wise Jacobian norm" />
+        <div class="figure-caption">
+          <span class="fig-label">Figure</span>
+          Layer-wise Jacobian norm
+          <span class="m">&Vert;<b>J</b><sub>&ell;</sub>&thinsp;&minus;&thinsp;<b>I</b>&Vert;<sub>F</sub></span>.
+          Pion maintains a uniform expressivity profile across depth, avoiding the interior
+          degradation seen with AdamW and Muon.
+        </div>
+      </div>
+    </div>
+
+    <!-- mu-P -->
+    <h4 class="subsection"><span class="mi">μP</span>-compatible learning-rate transfer</h4>
+    <p>
+      Pion satisfies <span class="mi">μP</span>'s forward spectral condition by construction.
+      With a simple bilateral spectral-norm normalization on
+      <span class="m"><b>G</b><sub>t</sub><sup>in</sup></span> and
+      <span class="m"><b>G</b><sub>t</sub><sup>out</sup></span>, the optimal learning rate is
+      invariant to model width across both LLaMA and Qwen architectures.
+    </p>
+
+    <div class="figure">
+      <img class="fw-983" src="static/figures/mup_adjusted_v2.png" alt="mu-P learning-rate transfer across scales" />
+      <div class="figure-caption">
+        <span class="fig-label">Figure</span>
+        <span class="mi">μP</span> learning-rate transfer for Pion across LLaMA and Qwen models of
+        varying widths. The minima of the loss curves align at the same learning rate, confirming
+        that small-scale tuning transfers reliably to larger models.
+      </div>
+    </div>
+
+    <!-- Post-training -->
+    <h4 class="subsection">Supervised finetuning</h4>
+    <p>
+      Full-parameter SFT on MetaMathQA and Magicoder-Evol-Instruct using Qwen2.5-1.5B and
+      Llama-3.2-3B. Pion delivers the best stability&ndash;plasticity tradeoff: comparable in-domain
+      math performance with markedly better OOD retention, and the strongest results on code
+      generation across both base models.
+    </p>
+
+    <div class="table-wrap">
+      <table class="results-table sft-table">
+        <thead>
+          <tr>
+            <th rowspan="3">Method</th>
+            <th colspan="4">Qwen2.5-1.5B</th>
+            <th colspan="4">Llama3.2-3B</th>
+          </tr>
+          <tr>
+            <th colspan="2">Math</th>
+            <th colspan="2">Code</th>
+            <th colspan="2">Math</th>
+            <th colspan="2">Code</th>
+          </tr>
+          <tr>
+            <th>ID (%)</th>
+            <th>OOD (%)</th>
+            <th>ID (%)</th>
+            <th>OOD (%)</th>
+            <th>ID (%)</th>
+            <th>OOD (%)</th>
+            <th>ID (%)</th>
+            <th>OOD (%)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Base</td>
+            <td>59.81</td><td>64.83</td>
+            <td>35.98</td><td>63.99</td>
+            <td>25.47</td><td>67.59</td>
+            <td>26.22</td><td>53.08</td>
+          </tr>
+          <tr>
+            <td>AdamW</td>
+            <td class="best">65.88</td><td>62.13</td>
+            <td>51.83</td><td>62.64</td>
+            <td class="best">59.87</td><td>60.86</td>
+            <td>46.95</td><td>58.64</td>
+          </tr>
+          <tr>
+            <td>Muon</td>
+            <td>65.27</td><td>61.22</td>
+            <td>50.00</td><td>62.41</td>
+            <td>57.77</td><td class="best">61.20</td>
+            <td>46.34</td><td>58.88</td>
+          </tr>
+          <tr>
+            <td><strong>Pion</strong></td>
+            <td>65.76</td><td class="best">62.16</td>
+            <td class="best">53.05</td><td class="best">63.21</td>
+            <td>58.83</td><td>60.44</td>
+            <td class="best">47.19</td><td class="best">59.74</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="table-foot">All numbers in <strong>%</strong> (accuracy). ID = in-domain, OOD = out-of-domain; <strong>bold</strong> = best per column among optimizers (excluding Base). Shaded row = Pion (Table 2 in the paper).</p>
+
+    <!-- RLVR -->
+    <h4 class="subsection">Reinforcement learning with verifiable reward</h4>
+    <p>
+      With GRPO on DeepMath, Pion is the strongest optimizer on every mathematical-reasoning
+      benchmark we tested for both Qwen3-1.7B and DeepSeek-R1-Distill-Qwen-1.5B &mdash; consistent with
+      the observation that RLVR updates largely preserve pretrained spectral structure, an inductive
+      bias that Pion enforces by design.
+    </p>
+
+    <div class="table-wrap">
+      <table class="results-table results-rl">
+        <thead>
+          <tr>
+            <th rowspan="2">Method</th>
+            <th colspan="6">Qwen3-1.7B</th>
+            <th colspan="6">DeepSeek-R1-Distill-Qwen-1.5B</th>
+          </tr>
+          <tr class="subhead">
+            <th>AIME24<br>avg@32</th>
+            <th>AIME25<br>avg@32</th>
+            <th>AMC23<br>avg@8</th>
+            <th>Minerva<br>avg@4</th>
+            <th>Olymp.<br>avg@8</th>
+            <th>Avg</th>
+            <th>AIME24<br>avg@32</th>
+            <th>AIME25<br>avg@32</th>
+            <th>AMC23<br>avg@8</th>
+            <th>Minerva<br>avg@4</th>
+            <th>Olymp.<br>avg@8</th>
+            <th>Avg</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Base</td>
+            <td>4.06</td><td>10.10</td><td>30.27</td><td>16.27</td><td>23.67</td><td>16.87</td>
+            <td>20.52</td><td>20.83</td><td>54.06</td><td>19.39</td><td>36.20</td><td>30.20</td>
+          </tr>
+          <tr>
+            <td>AdamW</td>
+            <td>22.71</td><td>20.94</td><td>58.43</td><td>25.91</td><td>46.09</td><td>34.82</td>
+            <td>25.42</td><td>23.94</td><td>62.65</td><td>23.16</td><td>44.69</td><td>35.97</td>
+          </tr>
+          <tr>
+            <td>Muon</td>
+            <td>20.42</td><td>19.27</td><td>54.22</td><td>24.08</td><td>42.41</td><td>32.08</td>
+            <td>29.06</td><td>23.33</td><td>66.72</td><td>22.89</td><td>44.61</td><td>37.32</td>
+          </tr>
+          <tr>
+            <td><strong>Pion</strong></td>
+            <td class="best">25.42</td><td class="best">21.98</td><td class="best">59.94</td><td class="best">26.84</td><td class="best">46.43</td><td class="best">36.12</td>
+            <td class="best">30.00</td><td class="best">24.38</td><td class="best">66.87</td><td class="best">23.90</td><td class="best">46.43</td><td class="best">38.32</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="table-foot">Each benchmark is <strong>avg@K</strong> accuracy (%): AIME24 avg@32, AIME25 avg@32, AMC23 avg@8, Minerva Math avg@4, OlympiadBench avg@8. <strong>Avg</strong> = mean of the five. Table 3 in the paper.</p>
+
+    <div class="figure">
+      <img class="fw-660" src="static/figures/rl_v2.png" alt="RLVR training dynamics" />
+      <div class="figure-caption">
+        <span class="fig-label">Figure</span>
+        Evaluation-accuracy training dynamics during RLVR with GRPO. Pion exhibits the fastest
+        convergence on both base models across all five benchmarks.
       </div>
     </div>
   </div>
 </section>
 
-<section id="bibtex" class="content-section">
-  <div class="container is-max-desktop content">
-    <h2 class="title is-3 section-title has-text-centered">BibTeX</h2>
-    <pre style="background: #fff; border: 1px solid #ddd; padding: 1.25rem; border-radius: 8px; font-size: 0.82rem; text-align: left; overflow-x: auto; color: #000;"><code>@techreport{pion2026,
+<!-- =================== BibTeX =================== -->
+<section id="bibtex">
+  <div class="container-narrow">
+    <h2 class="section-title">Citation</h2>
+    <h3 class="section-h">BibTeX</h3>
+    <div class="bibtex-wrap">
+      <div class="bibtex-header">
+        <span>bibtex</span>
+        <button class="copy-btn" onclick="copyBibtex(this)">Copy</button>
+      </div>
+<pre class="bibtex" id="bibtex-content">@techreport{pion2026,
   title={Pion: A Spectrum-Preserving Optimizer via Orthogonal Equivalence Transformation},
   author={Shi, Kexuan and Li, Hanxuan and Qiu, Zeju and Wen, Yandong and Buchholz, Simon and Liu, Weiyang},
   institution={SphereLab Technical Report},
   year={2026},
   note={Available at https://spherelab.ai/pion}
-}</code></pre>
+}</pre>
+    </div>
   </div>
 </section>
 
-<section id="references" class="content-section">
-  <div class="container is-max-desktop content">
-    <h2 class="title is-3 section-title has-text-centered">References (selected)</h2>
-    <p class="has-text-centered is-size-7 mb-4">Complete references are listed in the PDF.</p>
-    <ol>
-      <li>Yang, G. Feature learning in infinite-width neural networks. <em>ICML</em>, 2021.</li>
-      <li>Yang, G. et al. Tensor programs V: Tuning large neural networks via zero-shot hyperparameter transfer. <em>NeurIPS</em>, 2022.</li>
-      <li>Jordan, K. et al. Muon is Scalable for LLM Training. <em>arXiv</em>, 2025.</li>
-      <li>Qiu, Z. et al. POET: Reparameterized LLM Training via Orthogonal Equivalence Transformation. <em>NeurIPS</em>, 2025.</li>
-    </ol>
+<!-- =================== Footer =================== -->
+<footer>
+  <div class="container-narrow">
+    <p>
+      SphereLab · Technical report ·
+      <a href="https://spherelab.ai/pion">spherelab.ai/pion</a>
+    </p>
   </div>
-</section>
-
-<footer class="site-footer">
-  <p>SphereLab · Technical report · <a href="https://spherelab.ai/pion">spherelab.ai/pion</a></p>
-  <p>
-    Layout inspired by
-    <a href="https://nerfies.github.io/">Nerfies</a>,
-    <a href="https://mathvista.github.io/">MathVista</a>,
-    <a href="https://sgp-bench.github.io/">SGP-Bench</a>.
-  </p>
-  <p class="footer-license">
-    Licensed under a
-    <a rel="license" href="http://creativecommons.org/licenses/by-sa/4.0/">Creative Commons Attribution-ShareAlike 4.0 International License</a>.
-  </p>
 </footer>
 
-<button id="back-to-top" aria-label="Back to top" title="Back to top">
-  <i class="fas fa-chevron-up"></i>
-</button>
-
-<script defer src="./static/js/fontawesome.all.min.js"></script>
 <script>
-  const backToTop = document.getElementById('back-to-top');
-  window.addEventListener('scroll', () => {
-    if (window.scrollY > 400) backToTop.classList.add('visible');
-    else backToTop.classList.remove('visible');
-  }, { passive: true });
-  backToTop.addEventListener('click', () => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  });
+  function copyBibtex(btn) {
+    const text = document.getElementById('bibtex-content').innerText;
+    navigator.clipboard.writeText(text).then(() => {
+      const original = btn.textContent;
+      btn.textContent = 'Copied!';
+      btn.classList.add('copied');
+      setTimeout(() => {
+        btn.textContent = original;
+        btn.classList.remove('copied');
+      }, 1600);
+    });
+  }
 </script>
+
 </body>
 </html>

@@ -4,6 +4,10 @@ This repository is the official PyTorch implementation of Pion Optimizer, by Kex
 
 The code is coming soon. Stay tuned.  :)
 
+### Exploration
+
+### Pretraining Experiments
+
 ## Running RL Experiments
 
 ### Environment Setup

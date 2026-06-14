@@ -4,9 +4,25 @@ This repository is the official PyTorch implementation of Pion Optimizer, by Kex
 
 The code is coming soon. Stay tuned.  :)
 
-### Exploration
+We have open-sourced two core implementations of Pion mentioned in our paper: transported_ambient_ambient and lie_lie. The specific code can be found in /Megatron-LM/megatron/core/optimizer/pion.py. Additionally, we further explored the gradient uniformization of muon under Pion's update rule, and we proposed a pion_msign.py version.
 
+### Exploration
+For the exploration experiments mentioned in the follow-up paper, please run: 
+```bash
+cd pion/Megatron-LM
+bash opt_llama_60M_pion.sh
+```
+Modify the pion-update-side, pion-momentum, and pion-scaling parameters in the training script to conduct explorations.
 ### Pretraining Experiments
+To reproduce the bf16 pretraining experiments in the paper, please use: 
+```bash
+bash opt_llama_1.3B_muon.sh, opt_llama_1.3B_adamw.sh, opt_llama_1.3B_pion.sh.
+```
+
+For reproducing the Normalization-free experiments in the paper, please use:
+```bash
+bash @Megatron-LM_for_open_source/opt_llama_60M_adamw_no_norm.sh, etc.
+```
 
 ## Running RL Experiments
 

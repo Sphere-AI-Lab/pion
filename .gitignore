@@ -1,2 +1,6 @@
 .DS_Store
 .vscode/
+__pycache__/
+*.pyc
+*.egg-info/
+.pytest_cache/

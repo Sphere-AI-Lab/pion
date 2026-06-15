@@ -16,12 +16,16 @@ Modify the `pion-update-side`, `pion-momentum`, and `pion-scaling` parameters in
 ### Pretraining Experiments
 To reproduce the bf16 pretraining experiments in the paper, please use: 
 ```bash
-bash opt_llama_1.3B_muon.sh, opt_llama_1.3B_adamw.sh, opt_llama_1.3B_pion.sh.
+bash opt_llama_1.3B_adamw.sh # AdamW
+bash opt_llama_1.3B_muon.sh # Muon
+bash opt_llama_1.3B_pion.sh # Pion
 ```
 
 For reproducing the Normalization-free experiments in the paper, please use:
 ```bash
-bash opt_llama_60M_adamw_no_norm.sh, opt_llama_60M_muon_no_norm.sh, opt_llama_60M_pion_no_norm.sh
+bash opt_llama_60M_adamw_no_norm.sh # AdamW
+bash opt_llama_60M_muon_no_norm.sh # Muon
+bash opt_llama_60M_pion_no_norm.sh # Pion
 ```
 
 ## Running RL Experiments

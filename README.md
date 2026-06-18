@@ -4,7 +4,7 @@ This repository is the official PyTorch implementation of Pion Optimizer, by Kex
 
 The code is coming soon. Stay tuned.  :)
 
-We have open-sourced two core implementations of Pion mentioned in our paper: `transported_ambient_ambient` and `lie_lie`. The specific code can be found in [`pion.py`](https://github.com/Sphere-AI-Lab/pion/blob/main/megatron-lm/megatron/core/optimizer/pion.py). Additionally, we further explored the gradient uniformization of muon under Pion's update rule, and we proposed a `pion_msign.py` version.
+We have open-sourced two core implementations of Pion mentioned in our paper: `transported_ambient_ambient` and `lie_lie`. The specific code can be found in [`pion.py`](https://github.com/Sphere-AI-Lab/pion/blob/main/megatron-lm/megatron/core/optimizer/pion.py). Additionally, we further explored the gradient uniformization of muon under Pion's update rule, and we proposed a [`pion_msign.py`](https://github.com/Sphere-AI-Lab/pion/blob/main/megatron-lm/megatron/core/optimizer/pion_msign.py) version.
 
 ### Exploration
 For the exploration experiments mentioned in the follow-up paper, please run: 
